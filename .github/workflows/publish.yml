@@ -1,0 +1,102 @@
+name: publish · PyPI
+
+# Fires when a version tag is pushed. Builds wheels for every platform
+# × Python combo, then uploads them to PyPI using OpenID-Connect via
+# pypa/gh-action-pypi-publish (no long-lived API token stored in the
+# repo). Configure the trusted publisher at:
+#   https://pypi.org/manage/account/publishing/
+# with:
+#   owner: andrewkwatts-maker
+#   repo:  Pharos
+#   workflow: publish.yml
+#   environment: pypi
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-wheels:
+    name: wheel · ${{ matrix.os }} · py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - run: pip install maturin>=1.5
+      - name: build engine wheel
+        run: maturin build --release --interpreter python
+      - uses: actions/upload-artifact@v4
+        with:
+          name: engine-${{ matrix.os }}-py${{ matrix.python }}
+          path: target/wheels/pharos_engine-*.whl
+          retention-days: 7
+
+  build-editor:
+    name: pharos-editor wheel (pure python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install build
+      - name: build editor wheel
+        run: |
+          cd pharos-editor
+          python -m build --wheel --outdir ../target/wheels
+      - uses: actions/upload-artifact@v4
+        with:
+          name: editor
+          path: target/wheels/pharos_editor-*.whl
+          retention-days: 7
+
+  sdist:
+    name: sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install maturin>=1.5
+      - name: build sdist
+        run: maturin sdist --out target/wheels
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: target/wheels/*.tar.gz
+          retention-days: 7
+
+  publish:
+    name: upload to PyPI
+    needs: [build-wheels, build-editor, sdist]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/pharos-engine/
+    permissions:
+      id-token: write  # trusted-publisher OIDC
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: target/wheels
+          merge-multiple: true
+      - name: publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: target/wheels

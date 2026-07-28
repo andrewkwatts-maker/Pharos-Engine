@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cargo:
+    name: cargo · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: cargo check
+        run: cargo check --workspace --all-targets
+        env:
+          PYO3_PYTHON: python
+
+      - name: cargo test
+        run: cargo test --workspace
+        env:
+          PYO3_PYTHON: python
+
+  python-lints:
+    name: python lints
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: import lint
+        run: python scripts/import_lint.py
+
+      - name: errors lint
+        run: python scripts/errors_lint.py
+
+  wheel:
+    name: wheel · ${{ matrix.os }} · py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: install maturin
+        run: pip install maturin>=1.5
+
+      - name: build pharos-engine wheel
+        run: maturin build --release --interpreter python
+
+      - name: install + smoke
+        run: |
+          pip install target/wheels/pharos_engine-*.whl
+          python -c "import pharos_engine; assert pharos_engine.HAS_NATIVE; print(pharos_engine.__version__)"
+          python examples/hello_engine.py
+          python examples/hello_2d.py
+
+      - name: wheel size gate (<= 5 MB)
+        shell: bash
+        run: |
+          size=$(du -b target/wheels/pharos_engine-*.whl | cut -f1)
+          echo "wheel size: $size bytes"
+          # 5 MB alpha threshold — bump target to 3 MB post-v0.1.0
+          if [ "$size" -gt 5242880 ]; then
+            echo "wheel exceeds 5 MB alpha ceiling"
+            exit 1
+          fi
+
+      - name: upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pharos_engine-${{ matrix.os }}-py${{ matrix.python }}
+          path: target/wheels/pharos_engine-*.whl
+          retention-days: 14

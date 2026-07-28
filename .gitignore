@@ -8,8 +8,11 @@ target/
 *.pdb
 
 # Distribution / packaging
-dist/
-build/
+# Anchor with leading slash so we only ignore top-level `build/` and
+# `dist/` (Python's build artifacts) — NOT `python/pharos_engine/build/`
+# which is a real runtime subpackage.
+/dist/
+/build/
 *.egg-info/
 *.whl
 
