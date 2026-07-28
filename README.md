@@ -1,5 +1,10 @@
 # PharosEngine
 
+[![PyPI](https://img.shields.io/pypi/v/pharos-engine.svg)](https://pypi.org/project/pharos-engine/)
+[![Python](https://img.shields.io/pypi/pyversions/pharos-engine.svg)](https://pypi.org/project/pharos-engine/)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/andrewkwatts-maker/Pharos/actions/workflows/ci.yml/badge.svg)](https://github.com/andrewkwatts-maker/Pharos/actions/workflows/ci.yml)
+
 **A Rust + wgpu game engine with a Python authoring surface.** Runs headless from `pip install pharos-engine`; add the optional imgui-bundle editor with `pip install pharos-editor`.
 
 ```
