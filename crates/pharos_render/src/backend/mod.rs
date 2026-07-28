@@ -8,6 +8,9 @@
 use crate::scene::RenderScene;
 use crate::RenderError;
 
+pub mod mrt;
+pub use mrt::{GBufferTarget, MrtTargetSet};
+
 pub mod wgpu_backend;
 pub use wgpu_backend::WgpuBackend;
 

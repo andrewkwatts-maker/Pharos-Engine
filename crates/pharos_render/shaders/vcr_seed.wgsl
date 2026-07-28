@@ -54,9 +54,24 @@ fn cs_main(@builtin(global_invocation_id) gid: vec3<u32>) {
     textureStore(reservoir, vec3<i32>(uv, 1), slot0_hi);
 
     // Slot 1: refraction (if K >= 2 and ior != 1.0).
+    //
+    // Nova3D 96a23e0 port: guard against two failure modes on top of
+    // the base eta != 1.0 check:
+    //   (a) eta ~= 1.0 already handled by the abs() check below.
+    //   (b) Total-internal-reflection — when `1 - eta^2 * (1 - ndv^2)`
+    //       goes negative, WGSL/HLSL's refract() returns vec3(0.0),
+    //       which then poisons env-cube sampling downstream (a zero
+    //       direction reads mip base at (0,0,0) -> often near-black
+    //       and produces the dark rim Nova3D shipped by accident).
+    //       Fallback: reuse the reflection direction so the specular
+    //       slot picks up the energy the refractive slot dropped.
     if (VCR_K_SLOTS >= 2u && abs(ior - 1.0) > 0.001) {
         let eta = 1.0 / ior;
-        let refr = refract(view_dir, normal, eta);
+        var refr = refract(view_dir, normal, eta);
+        // TIR guard — degenerate refract() output has length near 0.
+        if (dot(refr, refr) < 1e-4) {
+            refr = refl;
+        }
         let slot1_lo = vec4<f32>(world_pos, 1.0);
         let slot1_hi = vec4<f32>(refr, cone);
         textureStore(reservoir, vec3<i32>(uv, 2), slot1_lo);
