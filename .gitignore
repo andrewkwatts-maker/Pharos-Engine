@@ -1,0 +1,53 @@
+# Rust build artifacts
+target/
+
+# Python compiled extensions and debug symbols
+*.pyd
+*.so
+*.dylib
+*.pdb
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.whl
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Runtime scratch dirs used during development
+tmp/
+save/
+
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ruff linter cache
+.ruff_cache/
+.mypy_cache/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code session state
+.claude/
+
+# Local scratch scripts
+new_script_*.py

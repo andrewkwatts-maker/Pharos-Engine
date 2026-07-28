@@ -1,0 +1,45 @@
+[package]
+name = "pharos_py"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "PyO3 bindings for PharosEngine: thin cdylib re-exporting pharos_core kernels + hosting pyo3-heavy helpers."
+
+[lib]
+name = "_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { workspace = true, features = ["extension-module"] }
+lz4.workspace = true
+rayon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+bytemuck.workspace = true
+rand.workspace = true
+half.workspace = true
+# Needed by the render_bindings scene-mutation helpers (build model
+# matrices from Python-supplied translation + scale tuples).
+glam.workspace = true
+
+# Kernel crate: hosts physics/fluid/softbody/geometry #[pyfunction]s
+# and #[pyclass]es. pharos_py re-registers them under the _core module
+# via each kernel's `pub fn register(m)` entry point.
+pharos_core = { path = "../pharos_core" }
+# Render crate: wgpu/Vulkan backend + VCR pipeline + moved CPU
+# kernels. pharos_py exposes a `render` submodule (Renderer /
+# RenderScene / Camera3D / VcrPipeline) so Python consumers can
+# request Rust-rendered frames without depending on the Python
+# wgpu-py binding — Python is a thin wrapper, wgpu/Vulkan lives in
+# Rust. `legacy-cpu` gates the pyo3 wrappers for the raster / fluid
+# shader kernels moved out of pharos_py in Sprint 2 so downstream
+# games keep their #[pyfunction] surface.
+pharos_render = { path = "../pharos_render", features = ["legacy-cpu"] }
+
+[features]
+default = ["3d"]
+3d = ["pharos_core/3d", "pharos_render/3d"]
+gi = ["3d", "pharos_core/gi", "pharos_render/gi"]
+ibl = ["3d", "pharos_core/ibl", "pharos_render/ibl"]
