@@ -1,4 +1,4 @@
-"""Headless smoke: import Pharos, spawn an entity, tick the engine.
+"""Headless smoke: import Pharos, spawn some entities, tick.
 
 Run:   python examples/hello_engine.py
 """
@@ -12,18 +12,26 @@ def main() -> None:
     print(f"native _core loaded: {ph.HAS_NATIVE}")
 
     engine = ph.Engine()
-    scene = engine.scene
+
+    # Engine starts scene-less; construct one and attach.
+    scene = ph.Scene()
+    engine.load_scene(scene)
 
     for i in range(3):
-        scene.add_entity(ph.Entity(name=f"cube_{i}", position=(float(i), 0.0)))
+        scene.add(ph.Entity(name=f"cube_{i}", position=(float(i), 0.0)))
 
     print(f"scene has {len(scene.entities)} entities")
     for e in scene.entities:
         print(f"  - {e.name} @ {e.position}")
 
-    for step in range(10):
-        engine.tick(1.0 / 60.0)
-    print("ticked 10 frames headlessly — OK")
+    # Tick each entity for a few frames headlessly. The full
+    # Engine.run() loop needs a GPU + window; this stepping form
+    # exercises the entity-side simulation in isolation.
+    dt = 1.0 / 60.0
+    for _ in range(10):
+        for entity in scene.entities:
+            entity.tick(dt)
+    print("ticked 10 frames headlessly - OK")
 
 
 if __name__ == "__main__":
