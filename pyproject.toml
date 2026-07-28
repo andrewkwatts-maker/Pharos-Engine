@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "pharos-engine"
-version = "0.1.0a1"
+version = "0.0.1a1"
 description = "A Rust + wgpu game engine with a Python authoring surface. Headless-runnable; the desktop editor is a separate optional wheel."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -45,7 +45,7 @@ Changelog = "https://github.com/andrewkwatts-maker/Pharos/blob/master/CHANGELOG.
 # `pip install pharos-engine[editor]` pulls the desktop editor wheel.
 # The engine itself has zero UI dependencies; the editor is entirely
 # optional.
-editor = ["pharos-editor==0.1.0a1"]
+editor = ["pharos-editor==0.0.1a1"]
 # 3D asset import — glTF 2.0 + Wavefront OBJ + STL/PLY (trimesh) +
 # HDR/EXR/DDS textures. Kept behind an extra so 2D-only users don't
 # pay the ~30 MB install cost.

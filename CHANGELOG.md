@@ -1,8 +1,12 @@
 # Changelog
 
-## v0.1.0a1 — 2026-07-29
+## v0.0.1a1 — 2026-07-29
 
 Initial alpha release. First `pip install pharos-engine` on PyPI.
+
+Version scheme: `0.0.1a1` — deliberately very early to signal that
+even API surfaces may shift before `0.1.0`. Semantic-versioning
+stability guarantees kick in at `0.1.0`.
 
 ### Engine
 
@@ -28,4 +32,4 @@ Initial alpha release. First `pip install pharos-engine` on PyPI.
 - 3D vertex draw calls (scaffold only clears today; entities render as 2D-projected dots).
 - 2D GPU pipeline (numpy raster works CPU-side; wgpu blit path pending).
 - glTF import end-to-end.
-- Project creation flow (Welcome dialog + template scaffolder — planned for v0.1.0a2).
+- Project creation flow (Welcome dialog + template scaffolder — planned for v0.0.1a2).
