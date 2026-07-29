@@ -92,17 +92,30 @@ jobs:
         run: maturin build --release --interpreter python
 
       - name: install + smoke
+        shell: bash
         run: |
-          pip install target/wheels/pharos_engine-*.whl
+          # Glob resolution behaves consistently under 'bash' on all
+          # three matrix OSes (PowerShell would not expand this the
+          # same way on Windows).
+          wheel=$(ls target/wheels/pharos_engine-*.whl | head -n1)
+          echo "installing $wheel"
+          pip install "$wheel"
           python -c "import pharos_engine; assert pharos_engine.HAS_NATIVE; print(pharos_engine.__version__)"
+          # hello_engine.py runs Engine() + Scene() + a headless tick
+          # loop — no window/GPU init, so it needs no display toolkit.
+          # hello_2d.py is a pure-numpy CPU raster and writes a PNG to
+          # cwd; both are the alpha smoke floor.
           python examples/hello_engine.py
           python examples/hello_2d.py
 
       - name: wheel size gate (<= 5 MB)
         shell: bash
         run: |
-          size=$(du -b target/wheels/pharos_engine-*.whl | cut -f1)
-          echo "wheel size: $size bytes"
+          # wc -c is portable across Linux (GNU coreutils), macOS
+          # (BSD wc), and Git-Bash on Windows; 'du -b' is Linux-only.
+          wheel=$(ls target/wheels/pharos_engine-*.whl | head -n1)
+          size=$(wc -c < "$wheel")
+          echo "wheel: $wheel — size: $size bytes"
           # 5 MB alpha threshold — bump target to 3 MB post-v0.1.0
           if [ "$size" -gt 5242880 ]; then
             echo "wheel exceeds 5 MB alpha ceiling"
