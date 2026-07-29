@@ -90,42 +90,45 @@ def apply_theme_to_imgui(theme_name: str | None = None) -> None:
     sel_bg   = _lookup(palette, "selection_bg",  (86, 180, 233, 180))
     sel_edge = _lookup(palette, "selection_edge", (230, 159, 0, 255))
 
-    setc = imgui.push_style_color  # short alias — but we'd rather set style.colors[i] directly.
-    # Direct-set avoids the push/pop stack; safer for once-per-theme-swap.
-    cols = style.colors
-    cols[imgui.Col_.text.value]                    = imgui.ImVec4(*text)
-    cols[imgui.Col_.text_disabled.value]           = imgui.ImVec4(*text_dis)
-    cols[imgui.Col_.window_bg.value]               = imgui.ImVec4(*panel_bg)
-    cols[imgui.Col_.child_bg.value]                = imgui.ImVec4(*bg)
-    cols[imgui.Col_.popup_bg.value]                = imgui.ImVec4(*bg_alt)
-    cols[imgui.Col_.border.value]                  = imgui.ImVec4(*panel_bd)
-    cols[imgui.Col_.frame_bg.value]                = imgui.ImVec4(*bg_alt)
-    cols[imgui.Col_.frame_bg_hovered.value]        = imgui.ImVec4(accent_a[0], accent_a[1], accent_a[2], 0.35)
-    cols[imgui.Col_.frame_bg_active.value]         = imgui.ImVec4(accent_a[0], accent_a[1], accent_a[2], 0.55)
-    cols[imgui.Col_.title_bg.value]                = imgui.ImVec4(*bg_alt)
-    cols[imgui.Col_.title_bg_active.value]         = imgui.ImVec4(*panel_bg)
-    cols[imgui.Col_.title_bg_collapsed.value]      = imgui.ImVec4(*bg)
-    cols[imgui.Col_.menu_bar_bg.value]             = imgui.ImVec4(*bg_alt)
-    cols[imgui.Col_.scrollbar_bg.value]            = imgui.ImVec4(*bg)
-    cols[imgui.Col_.scrollbar_grab.value]          = imgui.ImVec4(*panel_bd)
-    cols[imgui.Col_.check_mark.value]              = imgui.ImVec4(*accent)
-    cols[imgui.Col_.slider_grab.value]             = imgui.ImVec4(*accent)
-    cols[imgui.Col_.slider_grab_active.value]      = imgui.ImVec4(*accent_a)
-    cols[imgui.Col_.button.value]                  = imgui.ImVec4(accent[0], accent[1], accent[2], 0.55)
-    cols[imgui.Col_.button_hovered.value]          = imgui.ImVec4(accent[0], accent[1], accent[2], 0.80)
-    cols[imgui.Col_.button_active.value]           = imgui.ImVec4(*accent)
-    cols[imgui.Col_.header.value]                  = imgui.ImVec4(accent[0], accent[1], accent[2], 0.30)
-    cols[imgui.Col_.header_hovered.value]          = imgui.ImVec4(accent[0], accent[1], accent[2], 0.55)
-    cols[imgui.Col_.header_active.value]           = imgui.ImVec4(*accent)
-    cols[imgui.Col_.separator.value]               = imgui.ImVec4(*panel_bd)
-    cols[imgui.Col_.tab.value]                     = imgui.ImVec4(*bg_alt)
-    cols[imgui.Col_.tab_hovered.value]             = imgui.ImVec4(accent[0], accent[1], accent[2], 0.60)
-    cols[imgui.Col_.tab_selected.value]            = imgui.ImVec4(*panel_bg)
-    cols[imgui.Col_.tab_dimmed.value]              = imgui.ImVec4(*bg)
-    cols[imgui.Col_.docking_preview.value]         = imgui.ImVec4(accent_a[0], accent_a[1], accent_a[2], 0.55)
-    cols[imgui.Col_.text_selected_bg.value]        = imgui.ImVec4(*sel_bg)
-    cols[imgui.Col_.plot_lines.value]              = imgui.ImVec4(*accent_a)
-    cols[imgui.Col_.nav_cursor.value]              = imgui.ImVec4(*sel_edge)
+    # imgui-bundle 1.92 replaced `style.colors[i] = ImVec4(...)` with
+    # `style.set_color_(i, ImVec4(...))`. Same underlying array, wrapped
+    # accessor so the C++ Style struct stays layout-frozen for pybind.
+    def _set(idx, r, g, b, a):
+        style.set_color_(idx, imgui.ImVec4(r, g, b, a))
+
+    _set(imgui.Col_.text.value,                *text)
+    _set(imgui.Col_.text_disabled.value,       *text_dis)
+    _set(imgui.Col_.window_bg.value,           *panel_bg)
+    _set(imgui.Col_.child_bg.value,            *bg)
+    _set(imgui.Col_.popup_bg.value,            *bg_alt)
+    _set(imgui.Col_.border.value,              *panel_bd)
+    _set(imgui.Col_.frame_bg.value,            *bg_alt)
+    _set(imgui.Col_.frame_bg_hovered.value,    accent_a[0], accent_a[1], accent_a[2], 0.35)
+    _set(imgui.Col_.frame_bg_active.value,     accent_a[0], accent_a[1], accent_a[2], 0.55)
+    _set(imgui.Col_.title_bg.value,            *bg_alt)
+    _set(imgui.Col_.title_bg_active.value,     *panel_bg)
+    _set(imgui.Col_.title_bg_collapsed.value,  *bg)
+    _set(imgui.Col_.menu_bar_bg.value,         *bg_alt)
+    _set(imgui.Col_.scrollbar_bg.value,        *bg)
+    _set(imgui.Col_.scrollbar_grab.value,      *panel_bd)
+    _set(imgui.Col_.check_mark.value,          *accent)
+    _set(imgui.Col_.slider_grab.value,         *accent)
+    _set(imgui.Col_.slider_grab_active.value,  *accent_a)
+    _set(imgui.Col_.button.value,              accent[0], accent[1], accent[2], 0.55)
+    _set(imgui.Col_.button_hovered.value,      accent[0], accent[1], accent[2], 0.80)
+    _set(imgui.Col_.button_active.value,       *accent)
+    _set(imgui.Col_.header.value,              accent[0], accent[1], accent[2], 0.30)
+    _set(imgui.Col_.header_hovered.value,      accent[0], accent[1], accent[2], 0.55)
+    _set(imgui.Col_.header_active.value,       *accent)
+    _set(imgui.Col_.separator.value,           *panel_bd)
+    _set(imgui.Col_.tab.value,                 *bg_alt)
+    _set(imgui.Col_.tab_hovered.value,         accent[0], accent[1], accent[2], 0.60)
+    _set(imgui.Col_.tab_selected.value,        *panel_bg)
+    _set(imgui.Col_.tab_dimmed.value,          *bg)
+    _set(imgui.Col_.docking_preview.value,     accent_a[0], accent_a[1], accent_a[2], 0.55)
+    _set(imgui.Col_.text_selected_bg.value,    *sel_bg)
+    _set(imgui.Col_.plot_lines.value,          *accent_a)
+    _set(imgui.Col_.nav_cursor.value,          *sel_edge)
 
     # ── Geometry ─────────────────────────────────────────────────────
     style.window_rounding = float(geometry.get("window_rounding", 6))
@@ -141,7 +144,6 @@ def apply_theme_to_imgui(theme_name: str | None = None) -> None:
         float(geometry.get("spacing_x", 6)),
         float(geometry.get("spacing_y", 4)),
     )
-    _ = setc  # silence unused-alias warning
 
 
 def theme_accent(theme_name: str | None = None) -> imgui.ImVec4:
