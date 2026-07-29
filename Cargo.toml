@@ -1,0 +1,42 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/pharos_core",
+    "crates/pharos_render",
+    "crates/pharos_py",
+]
+
+[workspace.package]
+version = "0.0.1-alpha.1"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/andrewkwatts-maker/Pharos"
+
+[workspace.dependencies]
+# pyo3 without extension-module by default — only pharos_py (the final
+# cdylib) enables it; pharos_core takes pyo3 unfeatured so it can host
+# #[pyfunction] / #[pyclass] without triggering the Python-embed link
+# path. Cargo feature unification propagates extension-module back on
+# when pharos_py is in the graph.
+pyo3 = { version = "0.22" }
+lz4 = "1.25"
+rayon = "1.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+bytemuck = { version = "1", features = ["derive"] }
+rand = "0.8"
+half = "2"
+wide = "0.7"
+# GPU backend + math + async + image IO.
+wgpu = "0.20"
+ash = "0.38"
+pollster = "0.3"
+glam = { version = "0.29", features = ["bytemuck", "serde"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
