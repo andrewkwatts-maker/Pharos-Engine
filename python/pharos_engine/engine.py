@@ -2,11 +2,53 @@ from __future__ import annotations
 import time
 import wgpu
 from pathlib import Path
-try:
-    from rendercanvas.auto import RenderCanvas as WgpuCanvas, loop as _rc_loop
-    def run(): _rc_loop.run()
-except ImportError:
-    from wgpu.gui.auto import WgpuCanvas, run  # type: ignore[assignment]
+from typing import Any, Callable
+
+# WgpuCanvas + run() are only needed when the caller actually opens a
+# window (``Engine.run()`` / ``Engine.run_with_dpg()``). Importing them at
+# module-import time forces a GUI-backend selection (rendercanvas / glfw /
+# qt), which turns a plain ``import pharos_engine`` into a hard failure on
+# headless boxes with no display toolkit installed. This is contrary to
+# the engine's advertised "headless-runnable" contract, so we resolve them
+# lazily on first use and cache the result for the rest of the process.
+
+_WgpuCanvas: type | None = None
+_run: Callable[[], None] | None = None
+
+
+def _resolve_wgpu_gui() -> tuple[type, Callable[[], None]]:
+    """Import and cache the WgpuCanvas class + run() loop entry point.
+
+    Prefers the newer ``rendercanvas`` package (wgpu's recommended
+    frontend from wgpu-py 0.20+); falls back to ``wgpu.gui.auto`` for
+    older wgpu-py versions. Raises the underlying ImportError to the
+    caller so the diagnostic points at the missing toolkit ("install
+    glfw" / "install pyside6"), not at a generic engine-init failure.
+    """
+    global _WgpuCanvas, _run
+    if _WgpuCanvas is not None and _run is not None:
+        return _WgpuCanvas, _run
+    try:
+        from rendercanvas.auto import RenderCanvas as _RC, loop as _rc_loop
+
+        _WgpuCanvas = _RC
+        _run = _rc_loop.run
+    except ImportError:
+        from wgpu.gui.auto import WgpuCanvas as _WC, run as _wgpu_run  # type: ignore[assignment]
+
+        _WgpuCanvas = _WC
+        _run = _wgpu_run
+    return _WgpuCanvas, _run
+
+
+def __getattr__(name: str) -> Any:
+    """Preserve the historical ``from pharos_engine.engine import WgpuCanvas, run``
+    call sites: resolve them on first attribute access instead of module import.
+    """
+    if name in ("WgpuCanvas", "run"):
+        canvas_cls, run_fn = _resolve_wgpu_gui()
+        return canvas_cls if name == "WgpuCanvas" else run_fn
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 from pharos_engine.config import engine_config, Config, ConfigManager, _find_config_dir
 from pharos_engine.struct_registry import StructRegistry
 from pharos_engine.shader_gen import ShaderGen
@@ -404,7 +446,8 @@ class Engine:
                         f"got {_env_val!r}"
                     )
 
-        canvas = WgpuCanvas(
+        _WCanvas, _run_loop = _resolve_wgpu_gui()
+        canvas = _WCanvas(
             title=self._cfg.window.title,
             size=(self._cfg.window.width, self._cfg.window.height),
         )
@@ -682,7 +725,7 @@ class Engine:
             # platform event loop until the window is closed.
             canvas.request_draw(_draw)
             try:
-                run()
+                _run_loop()
             finally:
                 self._shutdown_gpu_resources()
                 self._config_manager.stop()
@@ -935,7 +978,8 @@ class Engine:
             _has_behavior_panel = False
 
         # --- GPU setup --------------------------------------------------
-        canvas = WgpuCanvas(
+        _WCanvas, _run_loop = _resolve_wgpu_gui()
+        canvas = _WCanvas(
             title=self._cfg.window.title,
             size=(self._cfg.window.width, self._cfg.window.height),
         )

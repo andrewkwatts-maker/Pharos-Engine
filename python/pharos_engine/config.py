@@ -236,6 +236,10 @@ def _find_config_dir() -> Path:
     2. ``config/`` directory at the repository root, discovered by walking up
        from this file's location until a directory containing ``engine.yml``
        is found.
+    3. Package-shipped default at ``pharos_engine/_defaults/engine.yml``.
+       This is the fallback that lets a plain ``pip install pharos-engine``
+       user do ``Engine()`` with zero setup — no ``config/`` directory in
+       cwd and no environment variable required.
     """
     env_dir = os.environ.get("SLAPPY_CONFIG_DIR")
     if env_dir:
@@ -258,6 +262,12 @@ def _find_config_dir() -> Path:
         if parent == candidate:
             break
         candidate = parent
+
+    # Package-shipped fallback (always present in a properly-built wheel;
+    # see the maturin ``include`` list in pyproject.toml).
+    pkg_default = Path(__file__).resolve().parent / "_defaults"
+    if (pkg_default / "engine.yml").exists():
+        return pkg_default
 
     raise FileNotFoundError(
         "Cannot locate engine.yml. Set SLAPPY_CONFIG_DIR or ensure the "

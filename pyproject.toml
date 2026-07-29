@@ -92,6 +92,7 @@ include = [
     "python/pharos_engine/prefabs/baked/*.prefab.yaml",
     "python/pharos_engine/prefabs/baked/previews/*.png",
     "python/pharos_engine/post_process/baked_chains/*.chain.yaml",
+    "python/pharos_engine/_defaults/*.yml",
 ]
 strip = true
 exclude = [
