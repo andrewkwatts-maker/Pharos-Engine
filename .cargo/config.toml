@@ -1,13 +1,32 @@
 # Repo-local Cargo config.
 #
+# This file is intentionally minimal. PyO3's build script probes the
+# interpreter automatically:
+#   - If PYO3_PYTHON is set in the environment, it is used verbatim.
+#   - Otherwise, whatever `python` / `python3` resolves to on PATH is
+#     probed via `sys.executable`.
+#
+# Windows notes
+# -------------
 # The Windows Store Python-launcher shim at
-# C:\Users\Andrew\AppData\Local\Microsoft\WindowsApps\python.exe is
-# what `python` resolves to on this system, but PyO3's build script
-# cannot invoke it (the shim only works as an interactive `python.exe`
-# launch, not as a subprocess with `import sys` probes). Pinning
-# PYO3_PYTHON to the real interpreter installed by the .msi lets
-# `cargo check --workspace` and `maturin develop` work with no
-# environment override at the CLI.
+# C:\Users\<you>\AppData\Local\Microsoft\WindowsApps\python.exe
+# cannot be invoked as a subprocess by PyO3's build script (it only
+# works as an interactive `python.exe` launch, not for `-c "import
+# sys; print(sys.executable)"` probes). If PATH resolves `python` to
+# that shim, either:
+#
+#   1. install Python from python.org and let its installer prepend
+#      the real interpreter to PATH, or
+#
+#   2. set PYO3_PYTHON to the absolute path of a real interpreter,
+#      either in your shell profile or in a *local* Cargo override
+#      (this file, uncommitted):
+#
+#        [env]
+#        PYO3_PYTHON = "C:/Users/you/AppData/Local/Programs/Python/Python313/python.exe"
+#
+# CI overrides PYO3_PYTHON per job (see .github/workflows/ci.yml), so
+# nothing here is required for CI builds.
 
 [env]
-PYO3_PYTHON = "C:/Users/Andrew/AppData/Local/Programs/Python/Python313/python.exe"
+PYTHONUNBUFFERED = "1"
