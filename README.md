@@ -15,12 +15,16 @@ pip install pharos-engine
 import pharos_engine as ph
 
 engine = ph.Engine()
-scene = engine.scene
-scene.add_entity(ph.Entity(name="player", position=(0.0, 0.0)))
+scene = ph.Scene()
+engine.load_scene(scene)
+scene.add(ph.Entity(name="player", position=(0.0, 0.0)))
 
-# Ticks the sim + advances renderer state. Engine works headless —
-# no window, no GPU init required.
-engine.tick(1.0 / 60.0)
+# The engine works headless — no window, no GPU init required.
+# For a live tick loop, iterate the entities:
+for _ in range(60):
+    dt = 1.0 / 60.0
+    for entity in scene.entities:
+        entity.tick(dt)
 ```
 
 ## Optional desktop editor
@@ -42,7 +46,7 @@ pharos-edit                     # boots a Nova3D-parity docked editor
 
 Python is a *wrapper*, not a runtime. Every hot path is Rust.
 
-## Status: alpha (v0.1.0a1)
+## Status: alpha (v0.0.1a1)
 
 - ✅ Rust simulation kernels (physics / fluid / softbody)
 - ✅ wgpu render backend (VCR pipeline scaffold, CSM, skinning)
