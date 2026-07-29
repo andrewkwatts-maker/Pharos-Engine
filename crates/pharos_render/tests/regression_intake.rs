@@ -112,3 +112,39 @@ fn f39cc44a_hiz_workgroup_constant_matches_shader() {
         "hiz_seed.wgsl workgroup size must match HIZ_SEED_WORKGROUP",
     );
 }
+
+/// Nova3D `0c0c890` — the caustic-emitter reservoir contribution must
+/// be weighted by the anisotropic 2x/4x Gaussian falloff. A flat weight
+/// produced hot single-pixel specks where an emitter's cone hit the
+/// primary surface. The sigmas are horizontal 2.0 / vertical 4.0 (matches
+/// the elongated footprint of a refracted light cone at grazing angles).
+#[test]
+fn f0c0c890_composite_caustic_gaussian_2x_4x() {
+    let src = include_str!("../shaders/vcr_composite.wgsl");
+    assert!(
+        src.contains("Nova3D 0c0c890"),
+        "vcr_composite.wgsl must carry the 0c0c890 guard comment",
+    );
+    assert!(
+        src.contains("CAUSTIC_GAUSS_SIGMA_X: f32 = 2.0"),
+        "caustic horizontal sigma must be 2.0 (Nova3D 0c0c890)",
+    );
+    assert!(
+        src.contains("CAUSTIC_GAUSS_SIGMA_Y: f32 = 4.0"),
+        "caustic vertical sigma must be 4.0 (Nova3D 0c0c890)",
+    );
+    assert!(
+        src.contains("fn caustic_gaussian_weight"),
+        "caustic weight helper must exist so sigmas cannot drift silently",
+    );
+    assert!(
+        src.contains("caustic_sum"),
+        "composite must accumulate caustic contribution separately from reflection/refraction",
+    );
+    // The caustic branch must additively contribute to the final
+    // colour — otherwise the whole port is a no-op.
+    assert!(
+        src.contains("final_colour = final_colour + caustic_sum"),
+        "composite must add caustic_sum into the final colour",
+    );
+}

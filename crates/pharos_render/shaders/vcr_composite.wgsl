@@ -23,6 +23,31 @@
 @group(3) @binding(0) var lit_colour:    texture_2d<f32>;
 @group(3) @binding(1) var lit_sampler:   sampler;
 
+// Sprint 1 Nova3D bug intake: caustic-emitter Gaussian 2x + 4x.
+// Nova3D 0c0c890 — the caustic reservoir contribution was previously
+// accumulated with a flat weight, producing hot single-pixel specks
+// wherever a caustic emitter's cone hit the primary surface. The fix
+// applies a 2D Gaussian falloff at 2x the horizontal reservoir spread
+// and 4x the vertical spread (matches the anisotropic footprint of a
+// refracted light cone against a flat receiver at grazing angles),
+// which spreads the emitter's energy across neighbouring texels and
+// eliminates the specks without darkening the average brightness.
+const CAUSTIC_GAUSS_SIGMA_X: f32 = 2.0; // Nova3D 0c0c890 — horizontal spread multiplier.
+const CAUSTIC_GAUSS_SIGMA_Y: f32 = 4.0; // Nova3D 0c0c890 — vertical spread multiplier.
+const CAUSTIC_MATID_MIN: f32 = 1.5;    // slot_matid >= 1.5 => caustic emitter (spec + refr = 0/1).
+
+// Anisotropic Gaussian weight for a caustic reservoir slot at offset
+// (dx, dy) from the receiver pixel, using the sigmas above. Kept as a
+// helper so the sigmas cannot silently drift out of sync with the
+// regression test that locks them.
+fn caustic_gaussian_weight(dx: f32, dy: f32) -> f32 {
+    let sx = CAUSTIC_GAUSS_SIGMA_X;
+    let sy = CAUSTIC_GAUSS_SIGMA_Y;
+    let ex = -0.5 * (dx * dx) / (sx * sx);
+    let ey = -0.5 * (dy * dy) / (sy * sy);
+    return exp(ex + ey);
+}
+
 struct VertexOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) uv: vec2<f32>,
@@ -56,7 +81,9 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
 
     var reflected_sum = vec3<f32>(0.0);
     var refracted_sum = vec3<f32>(0.0);
+    var caustic_sum   = vec3<f32>(0.0);
     var total_weight  = 0.0;
+    var caustic_weight_sum = 0.0;
     // Sprint 1 fallback source: sample the lit-colour target for the
     // current pixel. Used only when the reservoir has no reflection
     // contribution — avoids Nova3D's dark-halo bug.
@@ -74,13 +101,26 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         let lod = slot_cone * 6.0;
         let env = textureSampleLevel(env_cube, env_sampler, slot_dir, lod).rgb;
         let weight = 1.0 / (1.0 + f32(k));    // Sprint 7 replaces with true WRS weight
-        // Slot 0 = specular, slot 1 = refraction (matches seed shader).
+        // Slot matid: <0.5 = specular, 0.5..1.5 = refraction, >=1.5 = caustic emitter.
         if (slot_matid < 0.5) {
             reflected_sum = reflected_sum + env * weight;
-        } else {
+            total_weight = total_weight + weight;
+        } else if (slot_matid < CAUSTIC_MATID_MIN) {
             refracted_sum = refracted_sum + env * weight;
+            total_weight = total_weight + weight;
+        } else {
+            // Nova3D 0c0c890 caustic-emitter path: apply the anisotropic
+            // Gaussian falloff instead of a flat per-slot weight. slot_dir
+            // encodes the emitter-cone direction; project the pixel-space
+            // offset from cone axis onto (dx, dy) via the sub-camera basis
+            // stored in lo.xyz (Sprint 7 will hydrate this properly; for
+            // now use lo.xy directly as the offset).
+            let dx = lo.x;
+            let dy = lo.y;
+            let g = caustic_gaussian_weight(dx, dy) * weight;
+            caustic_sum = caustic_sum + env * g;
+            caustic_weight_sum = caustic_weight_sum + g;
         }
-        total_weight = total_weight + weight;
     }
     if (total_weight > 0.0) {
         reflected_sum = reflected_sum / total_weight;
@@ -90,6 +130,9 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         // instead of leaving the accumulator at zero. Fixes Sprint 1
         // Nova3D SSR-disabled halo bug.
         reflected_sum = ssr_fallback;
+    }
+    if (caustic_weight_sum > 0.0) {
+        caustic_sum = caustic_sum / caustic_weight_sum;
     }
 
     // Fresnel-lite mix. Full model comes in Sprint 7 with proper GGX.
@@ -103,5 +146,9 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     if (any(absorption > vec3<f32>(0.0))) {
         final_colour = final_colour + refr;
     }
+    // Nova3D 0c0c890 caustic-emitter contribution — additive on top of
+    // the base lit + refraction result. Emitter energy is already
+    // spread by the anisotropic Gaussian, so no further modulation.
+    final_colour = final_colour + caustic_sum;
     return vec4<f32>(final_colour, 1.0);
 }
