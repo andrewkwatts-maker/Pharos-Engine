@@ -68,3 +68,47 @@ fn f3d21abd_composite_covers_refract_black_sample() {
     assert!(src.contains("ssr_fallback"));
     assert!(src.contains("total_weight"));
 }
+
+/// Nova3D `39cc44a` — the HiZ pyramid build must seed mip 0 from the
+/// current-frame depth attachment before the downsample chain runs.
+/// Missing this write leaves mip 0 undefined on cold init / resize,
+/// which silently corrupts SSR + VCR frustum culling.
+#[test]
+fn f39cc44a_hiz_shader_seeds_mip_zero() {
+    let src = include_str!("../shaders/hiz_seed.wgsl");
+    assert!(
+        src.contains("Nova3D 39cc44a"),
+        "hiz_seed.wgsl must carry the 39cc44a guard comment",
+    );
+    assert!(
+        src.contains("fn hiz_seed"),
+        "hiz_seed.wgsl must expose the hiz_seed compute entry point",
+    );
+    assert!(
+        src.contains("textureStore(hiz_mip0"),
+        "hiz_seed.wgsl must write the depth sample into hiz_mip0",
+    );
+    assert!(
+        src.contains("textureLoad(depth_src"),
+        "hiz_seed.wgsl must read from the depth attachment source",
+    );
+}
+
+/// Nova3D `39cc44a` — the workgroup constant in the Rust module must
+/// stay in sync with the `@workgroup_size(8, 8, 1)` annotation in the
+/// WGSL shader. If they drift, the dispatch-group math undercounts and
+/// the seed pass silently skips the tail rows/columns of mip 0.
+#[test]
+fn f39cc44a_hiz_workgroup_constant_matches_shader() {
+    use pharos_render::pipeline::{HIZ_SEED_WORKGROUP, HiZPipeline};
+    assert_eq!(HIZ_SEED_WORKGROUP, (8, 8));
+    // Full-coverage dispatch: 100x100 target must round UP to 13x13
+    // groups so the last 4-pixel strip is not skipped.
+    assert_eq!(HiZPipeline::dispatch_groups(100, 100), (13, 13, 1));
+
+    let src = include_str!("../shaders/hiz_seed.wgsl");
+    assert!(
+        src.contains("@workgroup_size(8, 8, 1)"),
+        "hiz_seed.wgsl workgroup size must match HIZ_SEED_WORKGROUP",
+    );
+}

@@ -1,10 +1,12 @@
-//! Render pipeline modules: G-buffer, forward, and (Sprint 6) VCR.
+//! Render pipeline modules: G-buffer, forward, HiZ seed, and (Sprint 6) VCR.
 
 pub mod gbuffer;
 pub mod forward;
+pub mod hiz;
 
 pub use gbuffer::GBufferPass;
 pub use forward::ForwardPass;
+pub use hiz::{HIZ_SEED_WORKGROUP, HIZ_STORAGE_FORMAT, HiZPipeline};
 
 // -- Sprint 1 Nova3D bug intake: shadow bind protection --
 //
