@@ -1,0 +1,3 @@
+psnr_noisy_db=13.799
+psnr_denoised_db=31.098
+variance_reduction=0.9933

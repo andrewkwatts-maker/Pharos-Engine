@@ -1,0 +1,34 @@
+demo: hello_hybrid_layers
+frames: 60
+creation_events:
+- event: layer_created
+  name: base_scene
+  mode: 3D
+  z_order: 0
+  blend_mode: normal
+- event: layer_created
+  name: sepia_post
+  mode: 2D
+  z_order: 1
+  blend_mode: alpha
+- event: layer_created
+  name: overlay_cube
+  mode: 3D
+  z_order: 2
+  blend_mode: alpha
+trace_event_count: 540
+layer_render_events:
+  base_scene: 60
+  sepia_post: 60
+  overlay_cube: 60
+final_center_rgba:
+- 218
+- 187
+- 141
+- 255
+cross_layer_binding_count: 2
+wgpu_backend: Vulkan
+note: DDD3 sprint -- compositor walks Layer3D + Layer2D + Layer3D in z_order and composes
+  them. The 2D layer samples the first 3D layer's output (sample_from) and applies
+  sepia+vignette (apply_post_process_from); the second 3D layer uses the 2D layer
+  as its diffuse texture (use_layer_as_texture).

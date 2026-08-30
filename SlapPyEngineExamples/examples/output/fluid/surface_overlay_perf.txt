@@ -1,0 +1,6 @@
+particles: 168
+frames: 180
+sim ms/frame   mean=0.85  p95=1.09
+render ms/frame mean=3.43  (splat + watery surface stitched)
+surface-only ms/frame mean=2.60 p95=3.02
+total wall ms/frame   mean=4.28
