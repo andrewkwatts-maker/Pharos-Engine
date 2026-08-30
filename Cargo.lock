@@ -856,6 +856,7 @@ name = "pharos_py"
 version = "0.3.0"
 dependencies = [
  "bytemuck",
+ "glam",
  "half",
  "lz4",
  "pharos_core",
